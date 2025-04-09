@@ -1,0 +1,166 @@
+# Counter-Strike 2 სერვერის ინსტალაცია Ubuntu 22.04-ზე
+
+ეს გზამკვლევი დაგეხმარებათ Counter-Strike 2 სერვერის დაინსტალირებაში სუფთა Ubuntu 22.04 სერვერზე და მის გამართვაში, რათა მოთამაშეებმა შეძლონ შემოსვლა.
+
+## სისტემის მომზადება
+
+```bash
+# სისტემის განახლება
+sudo apt update
+sudo apt upgrade -y
+
+# საჭირო პაკეტების დაინსტალირება
+sudo apt install lib32gcc-s1 lib32stdc++6 lib32z1 libc6-i386 wget curl net-tools screen -y
+
+# ფაიერვოლის გამართვა
+sudo ufw allow 22/tcp
+sudo ufw allow 27015/tcp
+sudo ufw allow 27015/udp
+sudo ufw allow 27020/tcp
+sudo ufw allow 27020/udp
+sudo ufw enable
+
+# შექმენით ახალი მომხმარებელი სერვერისთვის (უსაფრთხოებისთვის)
+sudo adduser csserver
+sudo usermod -aG sudo csserver
+
+# გადადით ახალ მომხმარებელზე
+su - csserver
+```
+
+## SteamCMD-ის ინსტალაცია
+
+```bash
+# შექმენით დირექტორია SteamCMD-სთვის
+mkdir ~/steamcmd
+cd ~/steamcmd
+
+# ჩამოტვირთეთ და დააინსტალირეთ SteamCMD
+wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
+tar -xzf steamcmd_linux.tar.gz
+```
+
+## CS2 სერვერის ინსტალაცია
+
+```bash
+# გაუშვით SteamCMD
+./steamcmd.sh
+```
+
+SteamCMD კონსოლში შეიყვანეთ:
+
+```
+login anonymous
+force_install_dir ~/cs2-server
+app_update 730 validate
+quit
+```
+
+## სერვერის კონფიგურაცია
+
+```bash
+# შექმენით კონფიგურაციის დირექტორია
+mkdir -p ~/cs2-server/game/csgo/cfg
+
+# შექმენით კონფიგურაციის ფაილი
+nano ~/cs2-server/game/csgo/cfg/server.cfg
+```
+
+server.cfg ფაილის შიგთავსი:
+
+```
+hostname "ჩემი CS2 სერვერი"
+sv_password ""                    // დატოვეთ ცარიელი თუ საჯარო სერვერი გინდათ
+sv_tags "cs2, competitive"
+sv_region 3                       // 3 არის ევროპა, 0-ამერიკა, 1-აფრიკა, 2-აზია
+
+// სერვერის სიჩქარე და განახლება
+sv_minrate 128000
+sv_maxrate 128000
+sv_mincmdrate 128
+sv_maxcmdrate 128
+sv_minupdaterate 128
+sv_maxupdaterate 128
+
+// კონფიგურაცია
+mp_autoteambalance 1
+mp_limitteams 2
+mp_friendlyfire 0
+sv_cheats 0
+sv_lan 0
+sv_allowdownload 1
+sv_allowupload 1
+
+// რაუნდების ლიმიტები
+mp_timelimit 20
+mp_maxrounds 30
+mp_roundtime 1.92
+
+// ტყვიის კვალი
+sv_showhitboxes 0
+sv_showimpacts 0
+sv_showimpacts_time 4
+```
+
+## გამშვები სკრიპტის შექმნა
+
+```bash
+# შექმენით გამშვები სკრიპტი
+nano ~/start_cs2.sh
+```
+
+გამშვები სკრიპტის შიგთავსი:
+
+```bash
+#!/bin/bash
+cd ~/cs2-server
+screen -S cs2server ./srcds_run -game csgo -console -usercon +game_type 0 +game_mode 1 +mapgroup mg_active +map de_dust2 -tickrate 128
+```
+
+```bash
+# გახადეთ სკრიპტი შესრულებადი
+chmod +x ~/start_cs2.sh
+```
+
+## სერვერის გაშვება
+
+```bash
+# გაუშვით სერვერი
+~/start_cs2.sh
+```
+
+## სერვერის მართვა
+
+- სერვერის ასამუშავებლად მომავალში:
+  ```
+  ~/start_cs2.sh
+  ```
+
+- სერვერის სამართავად (screen სესიაში დასაბრუნებლად):
+  ```
+  screen -r cs2server
+  ```
+
+- სერვერიდან გამოსასვლელად (სერვერის გამორთვის გარეშე), დააჭირეთ `Ctrl+A` და შემდეგ `D`.
+
+## თქვენი სერვერის IP მისამართის პოვნა
+
+მოთამაშეებმა უნდა გამოიყენონ თქვენი სერვერის IP მისამართი და პორტი (სტანდარტულად 27015).
+
+IP მისამართის საპოვნელად:
+```bash
+curl ifconfig.me
+```
+
+ან
+
+```bash
+hostname -I
+```
+
+## მოთამაშეების მიღება
+
+მოთამაშეები შეძლებენ თქვენს სერვერში შემოსვლას შემდეგი გზებით:
+
+1. CS2-ში: `შესვლა კონსოლით და აკრიფეთ: connect თქვენი_IP:27015`
+2. სერვერების სიაში: `თქვენი სერვერი გამოჩნდება როგორც "ჩემი CS2 სერვერი"`
