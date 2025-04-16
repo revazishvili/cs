@@ -25,7 +25,8 @@ tar xvzf steamcmd_linux.tar.gz
 # 4. Counter-Strike სერვერის დაინსტალირება
 echo "4. Counter-Strike სერვერის დაინსტალირება (ამას შეიძლება დასჭირდეს რამდენიმე წუთი)..."
 cd ~/steamcmd
-./steamcmd.sh +login anonymous +force_install_dir ~/csgo-server +app_update 740 validate +quit
+./steamcmd.sh +force_install_dir ~/csgo-server +login anonymous +app_update 740 validate +quit
+
 
 # 5. სერვერის კონფიგურაცია
 echo "5. სერვერის კონფიგურაციის შექმნა..."
