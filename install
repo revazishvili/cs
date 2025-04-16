@@ -1,166 +1,104 @@
-# Counter-Strike 2 სერვერის ინსტალაცია Ubuntu 22.04-ზე
+#!/bin/bash
 
-ეს გზამკვლევი დაგეხმარებათ Counter-Strike 2 სერვერის დაინსტალირებაში სუფთა Ubuntu 22.04 სერვერზე და მის გამართვაში, რათა მოთამაშეებმა შეძლონ შემოსვლა.
+# CS:GO Server Installation Script for Ubuntu 22.04
+# გამოიყენეთ: bash install-csgo-server.sh
 
-## სისტემის მომზადება
+echo "დაწყებულია Counter-Strike: Global Offensive სერვერის ინსტალაცია Ubuntu 22.04-ზე"
+echo "---------------------------------------------------------------------"
 
-```bash
-# სისტემის განახლება
+# 1. სისტემის განახლება
+echo "1. სისტემის განახლება..."
 sudo apt update
 sudo apt upgrade -y
 
-# საჭირო პაკეტების დაინსტალირება
-sudo apt install lib32gcc-s1 lib32stdc++6 lib32z1 libc6-i386 wget curl net-tools screen -y
+# 2. საჭირო პაკეტების დაინსტალირება
+echo "2. საჭირო პაკეტების დაინსტალირება..."
+sudo apt install -y lib32gcc-s1 curl wget tar gzip lib32stdc++6 screen ufw
 
-# ფაიერვოლის გამართვა
-sudo ufw allow 22/tcp
+# 3. SteamCMD-ის დაინსტალირება
+echo "3. SteamCMD-ის დაინსტალირება..."
+mkdir -p ~/steamcmd
+cd ~/steamcmd
+wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
+tar xvzf steamcmd_linux.tar.gz
+
+# 4. Counter-Strike სერვერის დაინსტალირება
+echo "4. Counter-Strike სერვერის დაინსტალირება (ამას შეიძლება დასჭირდეს რამდენიმე წუთი)..."
+cd ~/steamcmd
+./steamcmd.sh +login anonymous +force_install_dir ~/csgo-server +app_update 740 validate +quit
+
+# 5. სერვერის კონფიგურაცია
+echo "5. სერვერის კონფიგურაციის შექმნა..."
+mkdir -p ~/csgo-server/csgo/cfg
+
+# სერვერის კონფიგურაციის ფაილის შექმნა
+cat > ~/csgo-server/csgo/cfg/server.cfg << EOL
+hostname "ჩემი CS:GO სერვერი"
+sv_password ""  // დატოვეთ ცარიელი ღია სერვერისთვის, ან დააყენეთ პაროლი
+rcon_password "ადმინპაროლი"  // შეცვალეთ ეს უსაფრთხოებისთვის
+sv_cheats 0
+sv_lan 0
+sv_allowupload 1
+sv_allowdownload 1
+mp_autoteambalance 1
+mp_limitteams 2
+mp_friendlyfire 0
+
+// თამაშის პარამეტრები
+mp_freezetime 5
+mp_roundtime 2
+mp_maxrounds 30
+mp_c4timer 40
+
+// რუკების როტაცია
+mapgroup mg_active
+mapcycle mapcycle.txt
+EOL
+
+# რუკების როტაციის ფაილის შექმნა
+cat > ~/csgo-server/csgo/cfg/mapcycle.txt << EOL
+de_dust2
+de_mirage
+de_inferno
+de_nuke
+de_overpass
+de_vertigo
+de_ancient
+EOL
+
+# 6. სტარტაპ სკრიპტის შექმნა
+echo "6. სტარტაპ სკრიპტის შექმნა..."
+cat > ~/start-csgo.sh << EOL
+#!/bin/bash
+cd ~/csgo-server
+./srcds_run -game csgo -console -usercon +game_type 0 +game_mode 1 +mapgroup mg_active +map de_dust2 -tickrate 128 -port 27015 -maxplayers 16
+EOL
+
+chmod +x ~/start-csgo.sh
+
+# 7. ფაირვოლის კონფიგურაცია
+echo "7. ფაირვოლის კონფიგურაცია..."
 sudo ufw allow 27015/tcp
 sudo ufw allow 27015/udp
 sudo ufw allow 27020/tcp
 sudo ufw allow 27020/udp
-sudo ufw enable
+sudo ufw --force enable
 
-# შექმენით ახალი მომხმარებელი სერვერისთვის (უსაფრთხოებისთვის)
-sudo adduser csserver
-sudo usermod -aG sudo csserver
-
-# გადადით ახალ მომხმარებელზე
-su - csserver
-```
-
-## SteamCMD-ის ინსტალაცია
-
-```bash
-# შექმენით დირექტორია SteamCMD-სთვის
-mkdir ~/steamcmd
-cd ~/steamcmd
-
-# ჩამოტვირთეთ და დააინსტალირეთ SteamCMD
-wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
-tar -xzf steamcmd_linux.tar.gz
-```
-
-## CS2 სერვერის ინსტალაცია
-
-```bash
-# გაუშვით SteamCMD
-./steamcmd.sh
-```
-
-SteamCMD კონსოლში შეიყვანეთ:
-
-```
-login anonymous
-force_install_dir ~/cs2-server
-app_update 730 validate
-quit
-```
-
-## სერვერის კონფიგურაცია
-
-```bash
-# შექმენით კონფიგურაციის დირექტორია
-mkdir -p ~/cs2-server/game/csgo/cfg
-
-# შექმენით კონფიგურაციის ფაილი
-nano ~/cs2-server/game/csgo/cfg/server.cfg
-```
-
-server.cfg ფაილის შიგთავსი:
-
-```
-hostname "ჩემი CS2 სერვერი"
-sv_password ""                    // დატოვეთ ცარიელი თუ საჯარო სერვერი გინდათ
-sv_tags "cs2, competitive"
-sv_region 3                       // 3 არის ევროპა, 0-ამერიკა, 1-აფრიკა, 2-აზია
-
-// სერვერის სიჩქარე და განახლება
-sv_minrate 128000
-sv_maxrate 128000
-sv_mincmdrate 128
-sv_maxcmdrate 128
-sv_minupdaterate 128
-sv_maxupdaterate 128
-
-// კონფიგურაცია
-mp_autoteambalance 1
-mp_limitteams 2
-mp_friendlyfire 0
-sv_cheats 0
-sv_lan 0
-sv_allowdownload 1
-sv_allowupload 1
-
-// რაუნდების ლიმიტები
-mp_timelimit 20
-mp_maxrounds 30
-mp_roundtime 1.92
-
-// ტყვიის კვალი
-sv_showhitboxes 0
-sv_showimpacts 0
-sv_showimpacts_time 4
-```
-
-## გამშვები სკრიპტის შექმნა
-
-```bash
-# შექმენით გამშვები სკრიპტი
-nano ~/start_cs2.sh
-```
-
-გამშვები სკრიპტის შიგთავსი:
-
-```bash
-#!/bin/bash
-cd ~/cs2-server
-screen -S cs2server ./srcds_run -game csgo -console -usercon +game_type 0 +game_mode 1 +mapgroup mg_active +map de_dust2 -tickrate 128
-```
-
-```bash
-# გახადეთ სკრიპტი შესრულებადი
-chmod +x ~/start_cs2.sh
-```
-
-## სერვერის გაშვება
-
-```bash
-# გაუშვით სერვერი
-~/start_cs2.sh
-```
-
-## სერვერის მართვა
-
-- სერვერის ასამუშავებლად მომავალში:
-  ```
-  ~/start_cs2.sh
-  ```
-
-- სერვერის სამართავად (screen სესიაში დასაბრუნებლად):
-  ```
-  screen -r cs2server
-  ```
-
-- სერვერიდან გამოსასვლელად (სერვერის გამორთვის გარეშე), დააჭირეთ `Ctrl+A` და შემდეგ `D`.
-
-## თქვენი სერვერის IP მისამართის პოვნა
-
-მოთამაშეებმა უნდა გამოიყენონ თქვენი სერვერის IP მისამართი და პორტი (სტანდარტულად 27015).
-
-IP მისამართის საპოვნელად:
-```bash
-curl ifconfig.me
-```
-
-ან
-
-```bash
-hostname -I
-```
-
-## მოთამაშეების მიღება
-
-მოთამაშეები შეძლებენ თქვენს სერვერში შემოსვლას შემდეგი გზებით:
-
-1. CS2-ში: `შესვლა კონსოლით და აკრიფეთ: connect თქვენი_IP:27015`
-2. სერვერების სიაში: `თქვენი სერვერი გამოჩნდება როგორც "ჩემი CS2 სერვერი"`
+echo "---------------------------------------------------------------------"
+echo "Counter-Strike: Global Offensive სერვერი წარმატებით დაინსტალირდა!"
+echo "სერვერის გასაშვებად გამოიყენეთ შემდეგი ბრძანებები:"
+echo ""
+echo "ფონურ რეჟიმში გასაშვებად:"
+echo "screen -S csgo"
+echo "~/start-csgo.sh"
+echo ""
+echo "ეკრანიდან გამოსასვლელად დააჭირეთ Ctrl+A და შემდეგ D"
+echo "სესიაში დასაბრუნებლად გამოიყენეთ ბრძანება: screen -r csgo"
+echo ""
+echo "სერვერის პარამეტრების შესაცვლელად დაარედაქტირეთ ფაილი: ~/csgo-server/csgo/cfg/server.cfg"
+echo "რუკების სიის შესაცვლელად დაარედაქტირეთ: ~/csgo-server/csgo/cfg/mapcycle.txt"
+echo ""
+echo "GSLT ტოკენის დასამატებლად (საჯარო სერვერისთვის):"
+echo "1. მიიღეთ ტოკენი: https://steamcommunity.com/dev/managegameservers"
+echo "2. დაამატეთ სტარტაპ სკრიპტში პარამეტრი: +sv_setsteamaccount YOUR_TOKEN_HERE"
+echo "---------------------------------------------------------------------"
